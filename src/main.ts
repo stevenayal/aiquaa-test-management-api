@@ -15,6 +15,11 @@ async function bootstrap() {
 
   app.useLogger(logger);
 
+  // Redirect root to Swagger
+  app.getHttpAdapter().get('/', (req, res) => {
+    res.redirect('/api/docs');
+  });
+
   // CORS
   app.enableCors({
     origin: configService.get('CORS_ORIGIN', 'http://localhost:3000'),
