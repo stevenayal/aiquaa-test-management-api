@@ -123,7 +123,7 @@ async function runSeed(logger: Logger, configService: ConfigService) {
       setTimeout(() => reject(new Error('Seed timeout')), 30000),
     );
 
-    const seedPromise = execAsync('npx ts-node prisma/seed.ts')
+    const seedPromise = execAsync('npx ts-node --transpile-only prisma/seed.ts')
       .then(({ stdout, stderr }) => {
         if (stdout) logger.log(stdout.trim());
         if (stderr) {
