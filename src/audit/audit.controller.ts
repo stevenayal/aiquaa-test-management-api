@@ -26,7 +26,7 @@ export class AuditController {
     if (entity && entityId) {
       return this.auditService.findByEntity(entity, entityId);
     }
-    return this.auditService.findAll({ entity, entityId, action, actorId });
+    return this.auditService.findAll({ entity, action, actorId });
   }
 }
 

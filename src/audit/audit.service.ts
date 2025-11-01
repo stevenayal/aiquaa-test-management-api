@@ -25,7 +25,7 @@ export class AuditService {
           entity: context.entity,
           entityId: context.entityId,
           action: context.action,
-          diff: context.diff as Prisma.JsonValue,
+          diff: context.diff ? (context.diff as Prisma.InputJsonValue) : undefined,
         },
       });
     } catch (error) {

@@ -31,8 +31,12 @@ node_modules/
 prisma/migrations/
 *.db
 *.db-journal
+dev.db
+dev.db-journal
 
 # Uploads
 uploads/
 temp/
 
+# Railway
+.railway/
