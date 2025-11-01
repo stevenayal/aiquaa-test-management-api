@@ -26,8 +26,8 @@ FROM node:20-slim
 
 WORKDIR /app
 
-# Install OpenSSL 1.1 for Prisma
-RUN apt-get update && apt-get install -y libssl1.1 openssl ca-certificates && rm -rf /var/lib/apt/lists/*
+# Install OpenSSL for Prisma
+RUN apt-get update && apt-get install -y libssl3 openssl ca-certificates && rm -rf /var/lib/apt/lists/*
 
 # Copy package files
 COPY package*.json ./
