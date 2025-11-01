@@ -6,6 +6,7 @@ import { AppModule } from './app.module';
 import { Logger } from 'nestjs-pino';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import { Request, Response } from 'express';
 
 const execAsync = promisify(exec);
 
@@ -109,7 +110,7 @@ async function bootstrap() {
   const instance = httpAdapter.getInstance();
 
   // Middleware to redirect root path to Swagger - must be first
-  instance.get('/', (_req, res) => {
+  instance.get('/', (_req: Request, res: Response) => {
     res.redirect(301, '/api/docs');
   });
 
