@@ -10,4 +10,3 @@ export class UpdateTestRunDto extends PartialType(CreateTestRunDto) {
   @IsOptional()
   status?: TestRunStatus;
 }
-

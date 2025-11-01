@@ -29,4 +29,3 @@ export class AuditController {
     return this.auditService.findAll({ entity, action, actorId });
   }
 }
-

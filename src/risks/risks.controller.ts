@@ -66,4 +66,3 @@ export class RisksController {
     return this.risksService.syncRiskMatrix(syncDto.projectId, syncDto);
   }
 }
-

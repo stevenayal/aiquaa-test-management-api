@@ -31,4 +31,3 @@ export class BulkCreateTestResultDto {
   @Type(() => BulkResultItemDto)
   results: BulkResultItemDto[];
 }
-

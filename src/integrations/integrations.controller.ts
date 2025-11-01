@@ -1,11 +1,5 @@
 import { Controller, Post, Body, Param, UseGuards } from '@nestjs/common';
-import {
-  ApiTags,
-  ApiOperation,
-  ApiBearerAuth,
-  ApiParam,
-  ApiBody,
-} from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiParam, ApiBody } from '@nestjs/swagger';
 import { IntegrationsService } from './integrations.service';
 import {
   ProcessCiWebhookDto,
@@ -66,4 +60,3 @@ export class IntegrationsController {
     return this.integrationsService.createExternalKey(entity, entityId, createDto.externalKey);
   }
 }
-

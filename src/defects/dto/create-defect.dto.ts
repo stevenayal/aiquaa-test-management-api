@@ -32,4 +32,3 @@ export class CreateDefectDto {
   @IsOptional()
   externalKey?: string;
 }
-

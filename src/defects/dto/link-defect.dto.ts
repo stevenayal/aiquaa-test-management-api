@@ -17,4 +17,3 @@ export class LinkDefectDto {
   @IsOptional()
   requirementId?: string;
 }
-

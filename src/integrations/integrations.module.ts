@@ -11,4 +11,3 @@ import { TestResultsModule } from '../test-results/test-results.module';
   exports: [IntegrationsService],
 })
 export class IntegrationsModule {}
-

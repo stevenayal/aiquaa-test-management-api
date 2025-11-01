@@ -1,5 +1,13 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, IsOptional, IsUUID, IsEnum, IsArray, IsObject } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsUUID,
+  IsEnum,
+  IsArray,
+  IsObject,
+} from 'class-validator';
 import { TestCasePriority } from '@prisma/client';
 
 export class CreateTestCaseDto {
@@ -36,4 +44,3 @@ export class CreateTestCaseDto {
   @IsArray()
   steps: Array<{ step: number; action: string; expectedResult?: string }>;
 }
-

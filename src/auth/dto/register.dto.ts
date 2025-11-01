@@ -17,4 +17,3 @@ export class RegisterDto {
   @IsOptional()
   role?: UserRole;
 }
-

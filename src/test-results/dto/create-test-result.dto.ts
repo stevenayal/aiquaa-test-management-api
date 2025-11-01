@@ -27,4 +27,3 @@ export class CreateTestResultDto {
   @IsOptional()
   comment?: string;
 }
-

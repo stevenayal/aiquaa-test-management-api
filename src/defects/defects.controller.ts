@@ -66,4 +66,3 @@ export class DefectsController {
     return this.defectsService.linkDefect(defectId, linkDto);
   }
 }
-

@@ -22,4 +22,3 @@ export class CreateTestRunDto {
   @IsOptional()
   scheduledAt?: string;
 }
-

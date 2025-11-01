@@ -98,9 +98,7 @@ export class RisksService {
         riskData.impact < 1 ||
         riskData.impact > 5
       ) {
-        throw new BadRequestException(
-          'Probability e impact deben estar entre 1 y 5',
-        );
+        throw new BadRequestException('Probability e impact deben estar entre 1 y 5');
       }
 
       const score = riskData.probability * riskData.impact;
@@ -157,4 +155,3 @@ export class RisksService {
     }
   }
 }
-

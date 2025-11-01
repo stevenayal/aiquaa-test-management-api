@@ -36,16 +36,17 @@ export class IntegrationsService {
         : [];
 
     for (const suite of testSuites) {
-      const testCases = Array.isArray(suite.testcase) ? suite.testcase : suite.testcase ? [suite.testcase] : [];
+      const testCases = Array.isArray(suite.testcase)
+        ? suite.testcase
+        : suite.testcase
+          ? [suite.testcase]
+          : [];
 
       for (const testCase of testCases) {
         // Buscar TestCase por externalKey o nombre
         const testCaseEntity = await this.prisma.testCase.findFirst({
           where: {
-            OR: [
-              { externalKey: testCase.name },
-              { title: { contains: testCase.name } },
-            ],
+            OR: [{ externalKey: testCase.name }, { title: { contains: testCase.name } }],
             projectId: (await this.prisma.testRun.findUnique({ where: { id: runId } }))?.planId
               ? undefined
               : undefined,
@@ -53,11 +54,12 @@ export class IntegrationsService {
         });
 
         if (testCaseEntity) {
-          const outcome = testCase.failure || testCase.error
-            ? TestResultOutcome.Fail
-            : testCase.skipped
-              ? TestResultOutcome.Blocked
-              : TestResultOutcome.Pass;
+          const outcome =
+            testCase.failure || testCase.error
+              ? TestResultOutcome.Fail
+              : testCase.skipped
+                ? TestResultOutcome.Blocked
+                : TestResultOutcome.Pass;
 
           results.push({
             caseId: testCaseEntity.id,
@@ -86,10 +88,7 @@ export class IntegrationsService {
     for (const result of results) {
       const testCase = await this.prisma.testCase.findFirst({
         where: {
-          OR: [
-            { externalKey: result.caseExternalId },
-            { id: result.caseId },
-          ],
+          OR: [{ externalKey: result.caseExternalId }, { id: result.caseId }],
         },
       });
 
@@ -150,4 +149,3 @@ export class IntegrationsService {
     };
   }
 }
-

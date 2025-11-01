@@ -74,4 +74,3 @@ export class TestResultsController {
     return this.testResultsService.createBulk(runId, bulkDto);
   }
 }
-

@@ -56,7 +56,10 @@ export class RequirementsService {
     // En producción, esto llamaría al servicio AIQUAA Req-Lint
     const rules = [
       { name: 'completeness', passed: requirement.text.length > 50 },
-      { name: 'specificity', passed: requirement.text.includes('debe') || requirement.text.includes('debería') },
+      {
+        name: 'specificity',
+        passed: requirement.text.includes('debe') || requirement.text.includes('debería'),
+      },
       { name: 'testability', passed: requirement.title.length > 10 },
     ];
 
@@ -75,4 +78,3 @@ export class RequirementsService {
     return result;
   }
 }
-

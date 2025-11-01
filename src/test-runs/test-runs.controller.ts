@@ -59,4 +59,3 @@ export class TestRunsController {
     return this.testRunsService.remove(id);
   }
 }
-

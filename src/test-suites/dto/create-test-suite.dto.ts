@@ -22,4 +22,3 @@ export class CreateTestSuiteDto {
   @IsOptional()
   query?: string;
 }
-

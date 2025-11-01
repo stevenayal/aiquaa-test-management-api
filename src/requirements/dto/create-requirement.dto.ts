@@ -28,4 +28,3 @@ export class CreateRequirementDto {
   @IsOptional()
   status?: RequirementStatus;
 }
-

@@ -15,4 +15,3 @@ export class SyncRiskMatrixDto {
   @Type(() => CreateRiskDto)
   risks: Array<CreateRiskDto & { id?: string }>;
 }
-

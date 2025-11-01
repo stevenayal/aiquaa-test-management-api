@@ -66,4 +66,3 @@ export class ChecklistsController {
     return this.checklistsService.remove(id);
   }
 }
-

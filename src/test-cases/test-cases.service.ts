@@ -89,11 +89,12 @@ export class TestCasesService {
 
     // Mapear casos de prueba
     for (const caso of data.casos_prueba) {
-      const steps = caso.pasos?.map((paso: string, index: number) => ({
-        step: index + 1,
-        action: paso,
-        expectedResult: caso.datos_prueba?.[`resultado_esperado_${index + 1}`] || '',
-      })) || [];
+      const steps =
+        caso.pasos?.map((paso: string, index: number) => ({
+          step: index + 1,
+          action: paso,
+          expectedResult: caso.datos_prueba?.[`resultado_esperado_${index + 1}`] || '',
+        })) || [];
 
       const priority = this.mapPriority(caso.prioridad || 'Media');
 
@@ -182,4 +183,3 @@ export class TestCasesService {
     return Buffer.from(buffer);
   }
 }
-

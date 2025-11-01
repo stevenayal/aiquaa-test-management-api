@@ -17,4 +17,3 @@ export class JiraCredentialsDto {
   @IsNotEmpty()
   token: string;
 }
-

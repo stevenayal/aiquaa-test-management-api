@@ -7,4 +7,3 @@ export class CreateExternalKeyDto {
   @IsNotEmpty()
   externalKey: string;
 }
-

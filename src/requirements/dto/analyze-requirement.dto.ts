@@ -7,4 +7,3 @@ export class AnalyzeRequirementDto {
   @IsOptional()
   options?: Record<string, any>;
 }
-

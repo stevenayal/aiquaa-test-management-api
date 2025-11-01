@@ -21,4 +21,3 @@ export class CreateChecklistDto {
   @IsArray()
   items: Array<{ item: string; checked: boolean }>;
 }
-

@@ -16,4 +16,3 @@ export class ProcessCiWebhookDto {
   @IsNotEmpty()
   data: string | any;
 }
-
