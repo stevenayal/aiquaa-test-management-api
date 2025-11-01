@@ -1,0 +1,312 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  admin
+  qa_lead
+  tester
+  viewer
+}
+
+enum RequirementStatus {
+  draft
+  approved
+  rejected
+  archived
+}
+
+enum TestSuiteType {
+  static
+  query
+}
+
+enum TestResultOutcome {
+  Pass
+  Fail
+  Blocked
+  NotRun
+}
+
+enum TestRunStatus {
+  scheduled
+  in_progress
+  completed
+  cancelled
+}
+
+enum DefectSeverity {
+  critical
+  high
+  medium
+  low
+}
+
+enum DefectStatus {
+  new
+  assigned
+  in_progress
+  resolved
+  closed
+  rejected
+}
+
+enum RiskCategory {
+  functional
+  performance
+  security
+  usability
+  compatibility
+}
+
+enum RiskStatus {
+  open
+  mitigated
+  closed
+}
+
+enum TestCasePriority {
+  Alta
+  Media
+  Baja
+}
+
+enum ChecklistType {
+  Web
+  API
+  Mobile
+  Security
+}
+
+enum AuditAction {
+  create
+  update
+  delete
+  execute
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  passwordHash String @map("password_hash")
+  role      UserRole @default(viewer)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  auditEvents AuditEvent[]
+  ownedRisks  Risk[]        @relation("RiskOwner")
+
+  @@map("users")
+}
+
+model Project {
+  id        String   @id @default(uuid())
+  name      String
+  key       String   @unique
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  requirements Requirement[]
+  testPlans    TestPlan[]
+  testCases    TestCase[]
+  defects      Defect[]
+  risks        Risk[]
+  checklists   Checklist[]
+
+  @@map("projects")
+}
+
+model Requirement {
+  id          String            @id @default(uuid())
+  projectId   String            @map("project_id")
+  externalKey String?           @map("external_key") @unique
+  title       String
+  text        String            @db.Text
+  status      RequirementStatus @default(draft)
+  createdAt   DateTime          @default(now()) @map("created_at")
+  updatedAt   DateTime          @updatedAt @map("updated_at")
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("requirements")
+}
+
+model TestPlan {
+  id          String    @id @default(uuid())
+  projectId   String    @map("project_id")
+  name        String
+  description String?   @db.Text
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  project  Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  suites   TestSuite[]
+  testRuns TestRun[]
+
+  @@map("test_plans")
+}
+
+model TestSuite {
+  id        String         @id @default(uuid())
+  planId    String         @map("plan_id")
+  name      String
+  type      TestSuiteType
+  query     String?        @db.Text
+  createdAt DateTime       @default(now()) @map("created_at")
+  updatedAt DateTime       @updatedAt @map("updated_at")
+
+  plan TestPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  runs TestRun[]
+
+  @@map("test_suites")
+}
+
+model TestCase {
+  id           String            @id @default(uuid())
+  projectId    String            @map("project_id")
+  externalKey  String?           @map("external_key") @unique
+  title        String
+  preconditions String?          @db.Text
+  priority     TestCasePriority
+  tags         String[]
+  steps        Json // Array of step objects
+  createdAt    DateTime          @default(now()) @map("created_at")
+  updatedAt   DateTime          @updatedAt @map("updated_at")
+
+  project      Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  testResults  TestResult[]
+  linkedDefects DefectLink[] @relation("TestCaseDefects")
+
+  @@map("test_cases")
+}
+
+model TestRun {
+  id          String         @id @default(uuid())
+  planId      String         @map("plan_id")
+  suiteId     String?        @map("suite_id")
+  name        String
+  scheduledAt DateTime?      @map("scheduled_at")
+  status      TestRunStatus  @default(scheduled)
+  createdAt   DateTime       @default(now()) @map("created_at")
+  updatedAt   DateTime       @updatedAt @map("updated_at")
+
+  plan     TestPlan     @relation(fields: [planId], references: [id], onDelete: Cascade)
+  suite    TestSuite?   @relation(fields: [suiteId], references: [id], onDelete: SetNull)
+  results  TestResult[]
+
+  @@map("test_runs")
+}
+
+model TestResult {
+  id          String          @id @default(uuid())
+  runId       String          @map("run_id")
+  caseId      String          @map("case_id")
+  outcome     TestResultOutcome @default(NotRun)
+  evidenceUrl String?         @map("evidence_url")
+  comment     String?         @db.Text
+  executedAt  DateTime?       @map("executed_at")
+  createdAt   DateTime        @default(now()) @map("created_at")
+  updatedAt   DateTime        @updatedAt @map("updated_at")
+
+  run           TestRun      @relation(fields: [runId], references: [id], onDelete: Cascade)
+  testCase      TestCase    @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  linkedDefects DefectLink[] @relation("TestResultDefects")
+
+  @@map("test_results")
+}
+
+model Defect {
+  id          String        @id @default(uuid())
+  projectId   String        @map("project_id")
+  title       String
+  description String        @db.Text
+  severity    DefectSeverity
+  status      DefectStatus  @default(new)
+  externalKey String?       @map("external_key") @unique
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  project      Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  links        DefectLink[]
+
+  @@map("defects")
+}
+
+model DefectLink {
+  id          String   @id @default(uuid())
+  defectId    String   @map("defect_id")
+  testCaseId  String?  @map("test_case_id")
+  testResultId String? @map("test_result_id")
+  requirementId String? @map("requirement_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  defect      Defect     @relation(fields: [defectId], references: [id], onDelete: Cascade)
+  testCase    TestCase?  @relation("TestCaseDefects", fields: [testCaseId], references: [id], onDelete: Cascade)
+  testResult  TestResult? @relation("TestResultDefects", fields: [testResultId], references: [id], onDelete: Cascade)
+
+  @@map("defect_links")
+}
+
+model Risk {
+  id              String      @id @default(uuid())
+  projectId       String      @map("project_id")
+  description     String      @db.Text
+  category        RiskCategory
+  probability     Int         // 1-5 scale
+  impact          Int         // 1-5 scale
+  score           Int         // probability * impact
+  status          RiskStatus  @default(open)
+  ownerId         String?     @map("owner_id")
+  mitigation      String?     @db.Text
+  contingency     String?     @db.Text
+  detectionMetric String?     @map("detection_metric") @db.Text
+  dueDate         DateTime?   @map("due_date")
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @updatedAt @map("updated_at")
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  owner   User?   @relation("RiskOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+
+  @@map("risks")
+}
+
+model Checklist {
+  id        String        @id @default(uuid())
+  projectId String       @map("project_id")
+  name      String
+  type      ChecklistType
+  items     Json         // Array of checklist items
+  createdAt DateTime     @default(now()) @map("created_at")
+  updatedAt DateTime     @updatedAt @map("updated_at")
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("checklists")
+}
+
+model AuditEvent {
+  id        String      @id @default(uuid())
+  actorId   String      @map("actor_id")
+  entity    String      // e.g., "TestCase", "Project"
+  entityId  String      @map("entity_id")
+  action    AuditAction
+  diff      Json?       // Before/after diff
+  createdAt DateTime    @default(now()) @map("created_at")
+
+  actor User @relation(fields: [actorId], references: [id], onDelete: Cascade)
+
+  @@map("audit_events")
+  @@index([entity, entityId])
+  @@index([actorId])
+  @@index([createdAt])
+}
+
