@@ -14,41 +14,50 @@ async function runMigrations(logger: Logger) {
   try {
     logger.log('🔄 Verificando y aplicando migraciones de base de datos...');
 
-    // Primero intentamos ejecutar migraciones (para producción)
-    try {
-      const { stdout, stderr } = await execAsync('npx prisma migrate deploy');
-      if (stdout) logger.log(stdout.trim());
-      if (stderr && !stderr.includes('No migration') && !stderr.includes('migration directory')) {
-        logger.warn(stderr.trim());
-      }
-      logger.log('✅ Migraciones aplicadas correctamente');
-      return;
-    } catch (migrateError: unknown) {
-      const error = migrateError as { message?: string; code?: number };
-      // Si no hay migraciones o falla, intentamos db push (sincroniza el esquema)
-      if (
-        error.message?.includes('No migration') ||
-        error.message?.includes('migration directory') ||
-        error.code === 1
-      ) {
-        logger.log('📋 No hay migraciones disponibles. Sincronizando esquema...');
-        try {
-          const { stdout } = await execAsync('npx prisma db push --skip-generate');
-          logger.log(stdout.trim());
-          logger.log('✅ Esquema de base de datos sincronizado');
-          return;
-        } catch (pushError: unknown) {
-          const pushErr = pushError as { message?: string };
-          // Si db push falla, puede ser porque las tablas ya existen o hay un error de conexión
-          if (pushErr.message?.includes('already exists') || pushErr.message?.includes('P1009')) {
-            logger.log('ℹ️  Las tablas ya existen o el esquema está actualizado');
-            return;
-          }
-          throw pushError;
+    // Agregar timeout de 30 segundos para evitar que bloquee el inicio
+    const timeout = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Migration timeout')), 30000),
+    );
+
+    const migrationPromise = (async () => {
+      // Primero intentamos ejecutar migraciones (para producción)
+      try {
+        const { stdout, stderr } = await execAsync('npx prisma migrate deploy');
+        if (stdout) logger.log(stdout.trim());
+        if (stderr && !stderr.includes('No migration') && !stderr.includes('migration directory')) {
+          logger.warn(stderr.trim());
         }
+        logger.log('✅ Migraciones aplicadas correctamente');
+        return;
+      } catch (migrateError: unknown) {
+        const error = migrateError as { message?: string; code?: number };
+        // Si no hay migraciones o falla, intentamos db push (sincroniza el esquema)
+        if (
+          error.message?.includes('No migration') ||
+          error.message?.includes('migration directory') ||
+          error.code === 1
+        ) {
+          logger.log('📋 No hay migraciones disponibles. Sincronizando esquema...');
+          try {
+            const { stdout } = await execAsync('npx prisma db push --skip-generate');
+            logger.log(stdout.trim());
+            logger.log('✅ Esquema de base de datos sincronizado');
+            return;
+          } catch (pushError: unknown) {
+            const pushErr = pushError as { message?: string };
+            // Si db push falla, puede ser porque las tablas ya existen o hay un error de conexión
+            if (pushErr.message?.includes('already exists') || pushErr.message?.includes('P1009')) {
+              logger.log('ℹ️  Las tablas ya existen o el esquema está actualizado');
+              return;
+            }
+            throw pushError;
+          }
+        }
+        throw migrateError;
       }
-      throw migrateError;
-    }
+    })();
+
+    await Promise.race([migrationPromise, timeout]);
   } catch (error: unknown) {
     const err = error as { message?: string };
     logger.error('❌ Error al configurar base de datos:', err.message || 'Error desconocido');
@@ -71,17 +80,33 @@ async function runSeed(logger: Logger, configService: ConfigService) {
 
     logger.log('🌱 Ejecutando seed para crear usuarios y datos iniciales...');
 
-    const { stdout, stderr } = await execAsync('npx ts-node prisma/seed.ts');
-    if (stdout) logger.log(stdout.trim());
-    if (stderr && !stderr.includes('warning')) {
-      logger.warn(stderr.trim());
-    }
-    logger.log('✅ Seed completado - Usuarios y datos iniciales creados');
+    // Agregar timeout de 30 segundos
+    const timeout = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Seed timeout')), 30000),
+    );
+
+    const seedPromise = execAsync('npx ts-node prisma/seed.ts').then(({ stdout, stderr }) => {
+      if (stdout) logger.log(stdout.trim());
+      if (stderr && !stderr.includes('warning')) {
+        logger.warn(stderr.trim());
+      }
+      logger.log('✅ Seed completado - Usuarios y datos iniciales creados');
+    });
+
+    await Promise.race([seedPromise, timeout]);
   } catch (error: unknown) {
     const err = error as { message?: string };
     // Si el seed falla, puede ser porque los datos ya existen
-    if (err.message?.includes('Unique constraint') || err.message?.includes('already exists')) {
-      logger.log('ℹ️  Los datos del seed ya existen o hay conflictos de unicidad');
+    if (
+      err.message?.includes('Unique constraint') ||
+      err.message?.includes('already exists') ||
+      err.message?.includes('timeout')
+    ) {
+      if (err.message?.includes('timeout')) {
+        logger.warn('⏱️  Seed timeout - continuando sin datos iniciales');
+      } else {
+        logger.log('ℹ️  Los datos del seed ya existen o hay conflictos de unicidad');
+      }
       return;
     }
     logger.error('❌ Error al ejecutar seed:', err.message || 'Error desconocido');
@@ -90,80 +115,93 @@ async function runSeed(logger: Logger, configService: ConfigService) {
 }
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, {
-    bufferLogs: true,
-  });
+  try {
+    const app = await NestFactory.create(AppModule, {
+      bufferLogs: true,
+    });
 
-  const configService = app.get(ConfigService);
-  const logger = app.get(Logger);
+    const configService = app.get(ConfigService);
+    const logger = app.get(Logger);
 
-  app.useLogger(logger);
+    app.useLogger(logger);
 
-  // Run database migrations automatically
-  await runMigrations(logger);
+    // Run database migrations automatically (non-blocking)
+    runMigrations(logger).catch((err) => {
+      logger.error('Error en migraciones (no bloqueante):', err);
+    });
 
-  // Run seed to create initial users and data
-  await runSeed(logger, configService);
+    // Run seed to create initial users and data (non-blocking)
+    runSeed(logger, configService).catch((err) => {
+      logger.error('Error en seed (no bloqueante):', err);
+    });
 
-  // Redirect root to Swagger (must be before global prefix)
-  const httpAdapter = app.getHttpAdapter();
-  const instance = httpAdapter.getInstance();
+    // Redirect root to Swagger (must be before global prefix)
+    const httpAdapter = app.getHttpAdapter();
+    const instance = httpAdapter.getInstance();
 
-  // Middleware to redirect root path to Swagger - must be first
-  instance.get('/', (_req: Request, res: Response) => {
-    res.redirect(301, '/api/docs');
-  });
+    // Middleware to redirect root path to Swagger - must be first
+    instance.get('/', (_req: Request, res: Response) => {
+      res.redirect(301, '/api/docs');
+    });
 
-  // CORS
-  app.enableCors({
-    origin: configService.get('CORS_ORIGIN', 'http://localhost:3000'),
-    credentials: true,
-  });
+    // CORS
+    app.enableCors({
+      origin: configService.get('CORS_ORIGIN', 'http://localhost:3000'),
+      credentials: true,
+    });
 
-  // Global prefix
-  app.setGlobalPrefix('api');
+    // Global prefix
+    app.setGlobalPrefix('api');
 
-  // Validation
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      forbidNonWhitelisted: true,
-      transform: true,
-    }),
-  );
+    // Validation
+    app.useGlobalPipes(
+      new ValidationPipe({
+        whitelist: true,
+        forbidNonWhitelisted: true,
+        transform: true,
+      }),
+    );
 
-  // Swagger
-  const config = new DocumentBuilder()
-    .setTitle('AIQUAA Test Management API')
-    .setDescription('API REST para gestión de pruebas con integración AIQUAA')
-    .setVersion('1.0')
-    .addBearerAuth()
-    .addTag('auth', 'Autenticación')
-    .addTag('projects', 'Proyectos')
-    .addTag('requirements', 'Requisitos')
-    .addTag('test-plans', 'Planes de Prueba')
-    .addTag('test-suites', 'Suites de Prueba')
-    .addTag('test-cases', 'Casos de Prueba')
-    .addTag('test-runs', 'Ejecuciones de Prueba')
-    .addTag('test-results', 'Resultados de Prueba')
-    .addTag('defects', 'Defectos')
-    .addTag('risks', 'Riesgos')
-    .addTag('checklists', 'Checklists')
-    .addTag('audit', 'Auditoría')
-    .addTag('integrations', 'Integraciones')
-    .build();
+    // Swagger
+    const config = new DocumentBuilder()
+      .setTitle('AIQUAA Test Management API')
+      .setDescription('API REST para gestión de pruebas con integración AIQUAA')
+      .setVersion('1.0')
+      .addBearerAuth()
+      .addTag('auth', 'Autenticación')
+      .addTag('projects', 'Proyectos')
+      .addTag('requirements', 'Requisitos')
+      .addTag('test-plans', 'Planes de Prueba')
+      .addTag('test-suites', 'Suites de Prueba')
+      .addTag('test-cases', 'Casos de Prueba')
+      .addTag('test-runs', 'Ejecuciones de Prueba')
+      .addTag('test-results', 'Resultados de Prueba')
+      .addTag('defects', 'Defectos')
+      .addTag('risks', 'Riesgos')
+      .addTag('checklists', 'Checklists')
+      .addTag('audit', 'Auditoría')
+      .addTag('integrations', 'Integraciones')
+      .build();
 
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api/docs', app, document, {
-    swaggerOptions: {
-      persistAuthorization: true,
-    },
-  });
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('api/docs', app, document, {
+      swaggerOptions: {
+        persistAuthorization: true,
+      },
+    });
 
-  const port = configService.get('PORT', 3000);
-  await app.listen(port);
-  logger.log(`🚀 Application is running on: http://localhost:${port}`);
-  logger.log(`📚 Swagger documentation: http://localhost:${port}/api/docs`);
+    const port = configService.get('PORT', 3000);
+    await app.listen(port);
+    logger.log(`🚀 Application is running on: http://localhost:${port}`);
+    logger.log(`📚 Swagger documentation: http://localhost:${port}/api/docs`);
+  } catch (error: unknown) {
+    const err = error as { message?: string };
+    console.error('❌ Error fatal al iniciar la aplicación:', err.message || 'Error desconocido');
+    process.exit(1);
+  }
 }
 
-bootstrap();
+bootstrap().catch((error) => {
+  console.error('❌ Error fatal en bootstrap:', error);
+  process.exit(1);
+});
