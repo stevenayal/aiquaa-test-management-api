@@ -239,6 +239,7 @@ async function bootstrap() {
       swaggerOptions: {
         persistAuthorization: true,
       },
+      jsonDocumentUrl: '/api/docs-json', // Swagger expone el JSON automáticamente aquí
     });
 
     // Railway asigna el puerto automáticamente, usar process.env.PORT o variable de entorno

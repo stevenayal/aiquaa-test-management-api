@@ -21,7 +21,8 @@
     "migrate:reset": "prisma migrate reset",
     "seed": "ts-node prisma/seed.ts",
     "generate": "prisma generate",
-    "studio": "prisma studio"
+    "studio": "prisma studio",
+    "openapi:generate": "ts-node scripts/generate-openapi.ts"
   },
   "dependencies": {
     "@nestjs/common": "^10.3.0",
