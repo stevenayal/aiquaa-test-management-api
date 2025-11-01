@@ -21,13 +21,13 @@ RUN npx prisma generate
 # Build application
 RUN npm run build
 
-# Production stage
-FROM node:20-alpine
+# Production stage - Use Debian instead of Alpine for better OpenSSL support
+FROM node:20-slim
 
 WORKDIR /app
 
-# Install OpenSSL for Prisma
-RUN apk add --no-cache openssl1.1-compat
+# Install OpenSSL 1.1 for Prisma
+RUN apt-get update && apt-get install -y libssl1.1 openssl ca-certificates && rm -rf /var/lib/apt/lists/*
 
 # Copy package files
 COPY package*.json ./
