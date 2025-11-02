@@ -20,56 +20,55 @@ async function runMigrations(logger: Logger) {
     );
 
     const migrationPromise = (async () => {
-      // Primero intentamos ejecutar migraciones (para producción)
+      // FORZAR db push primero en producción para crear tablas
+      logger.log('📋 Sincronizando esquema con db push...');
       try {
-        const { stdout, stderr } = await execAsync('npx prisma migrate deploy');
-        if (stdout) logger.log(stdout.trim());
-        // Verificar si no hay migraciones para ejecutar db push
-        if (stderr && (stderr.includes('No migration') || stderr.includes('migration directory'))) {
-          logger.log('📋 No hay migraciones disponibles. Sincronizando esquema...');
-          try {
-            const { stdout: pushStdout, stderr: pushStderr } = await execAsync(
-              'npx prisma db push --skip-generate',
-            );
-            if (pushStdout) logger.log(pushStdout.trim());
-            if (pushStderr) logger.log(pushStderr.trim());
-            logger.log('✅ Esquema de base de datos sincronizado');
-            return;
-          } catch (pushError: unknown) {
-            const pushErr = pushError as { message?: string; stderr?: string; stdout?: string };
-            // Si db push falla, puede ser porque las tablas ya existen o hay un error de conexión
-            const errorMsg = pushErr.message || pushErr.stderr || '';
-            if (
-              errorMsg.includes('already exists') ||
-              errorMsg.includes('P1009') ||
-              errorMsg.includes('Database is up to date')
-            ) {
-              logger.log('ℹ️  Las tablas ya existen o el esquema está actualizado');
-              return;
-            }
-            logger.warn(`⚠️  db push falló: ${errorMsg}`);
-            throw pushError;
-          }
-        }
-        if (stderr && !stderr.includes('No migration') && !stderr.includes('migration directory')) {
-          logger.warn(stderr.trim());
-        }
-        logger.log('✅ Migraciones aplicadas correctamente');
+        const { stdout: pushStdout, stderr: pushStderr } = await execAsync(
+          'npx prisma db push --skip-generate --accept-data-loss',
+        );
+        if (pushStdout) logger.log(pushStdout.trim());
+        if (pushStderr && !pushStderr.includes('warnings')) logger.log(pushStderr.trim());
+        logger.log('✅ Esquema de base de datos sincronizado');
         return;
-      } catch (migrateError: unknown) {
-        const error = migrateError as { message?: string; code?: number; stderr?: string };
-        const errorMsg = error.message || error.stderr || '';
+      } catch (pushError: unknown) {
+        const pushErr = pushError as { message?: string; stderr?: string; stdout?: string };
+        const errorMsg = pushErr.message || pushErr.stderr || '';
 
-        // Si no hay migraciones o falla, intentamos db push (sincroniza el esquema)
+        // Si las tablas ya existen, está OK
         if (
-          errorMsg.includes('No migration') ||
-          errorMsg.includes('migration directory') ||
-          error.code === 1
+          errorMsg.includes('already exists') ||
+          errorMsg.includes('P1009') ||
+          errorMsg.includes('Database is up to date')
         ) {
-          logger.log('📋 No hay migraciones disponibles. Sincronizando esquema...');
-          try {
-            const { stdout: pushStdout, stderr: pushStderr } = await execAsync(
-              'npx prisma db push --skip-generate',
+          logger.log('ℹ️  Las tablas ya existen o el esquema está actualizado');
+          return;
+        }
+
+        // Si db push falla, intentar con migraciones
+        logger.warn(`⚠️  db push falló, intentando con migraciones...`);
+
+        try {
+          const { stdout, stderr } = await execAsync('npx prisma migrate deploy');
+          if (stdout) logger.log(stdout.trim());
+          if (stderr && !stderr.includes('No migration') && !stderr.includes('migration directory')) {
+            logger.warn(stderr.trim());
+          }
+          logger.log('✅ Migraciones aplicadas correctamente');
+          return;
+        } catch (migrateError: unknown) {
+          const error = migrateError as { message?: string; code?: number; stderr?: string };
+          const errorMsg = error.message || error.stderr || '';
+
+          // Si no hay migraciones o falla, intentamos db push (sincroniza el esquema)
+          if (
+            errorMsg.includes('No migration') ||
+            errorMsg.includes('migration directory') ||
+            error.code === 1
+          ) {
+            logger.log('📋 No hay migraciones disponibles. Sincronizando esquema...');
+            try {
+              const { stdout: pushStdout, stderr: pushStderr } = await execAsync(
+                'npx prisma db push --skip-generate',
             );
             if (pushStdout) logger.log(pushStdout.trim());
             if (pushStderr) logger.log(pushStderr.trim());
