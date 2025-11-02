@@ -1,4 +1,4 @@
-import { Injectable, ExecutionContext } from '@nestjs/common';
+import { Injectable, ExecutionContext, UnauthorizedException } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { Reflector } from '@nestjs/core';
 
@@ -31,5 +31,13 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     }
 
     return super.canActivate(context);
+  }
+
+  handleRequest(err: any, user: any, info: any) {
+    // Si hay un error o no hay usuario, lanzar excepción
+    if (err || !user) {
+      throw err || new UnauthorizedException('Token de autenticación inválido o ausente');
+    }
+    return user;
   }
 }

@@ -94,18 +94,37 @@ enum AuditAction {
   execute
 }
 
+enum OTPPurpose {
+  verify_email
+  reset_password
+}
+
 model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  passwordHash String @map("password_hash")
-  role      UserRole @default(viewer)
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  role         UserRole @default(viewer)
+  emailVerified Boolean @default(false) @map("email_verified")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
 
   auditEvents AuditEvent[]
   ownedRisks  Risk[]        @relation("RiskOwner")
 
   @@map("users")
+}
+
+model OTP {
+  id        String     @id @default(uuid())
+  email     String
+  code      String
+  purpose   OTPPurpose
+  expiresAt DateTime   @map("expires_at")
+  used      Boolean    @default(false)
+  createdAt DateTime   @default(now()) @map("created_at")
+
+  @@index([email, code])
+  @@map("otps")
 }
 
 model Project {

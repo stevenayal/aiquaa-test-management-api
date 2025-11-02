@@ -52,6 +52,7 @@ export class AuthController {
   }
 
   @Post('refresh')
+  @Public()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Refrescar token de acceso' })
   @ApiBody({

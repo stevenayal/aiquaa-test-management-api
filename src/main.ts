@@ -151,10 +151,17 @@ async function bootstrap() {
       res.redirect(301, '/api/docs');
     });
 
-    // CORS
+    // CORS - Configuración flexible para múltiples orígenes
+    const corsOrigin = configService.get<string>('CORS_ORIGIN', 'http://localhost:3000');
+    const allowedOrigins = corsOrigin === '*' 
+      ? true // Permitir todos los orígenes si es '*'
+      : corsOrigin.split(',').map(origin => origin.trim()); // Soporte para múltiples orígenes separados por coma
+
     app.enableCors({
-      origin: configService.get('CORS_ORIGIN', 'http://localhost:3000'),
+      origin: allowedOrigins,
       credentials: true,
+      methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+      allowedHeaders: ['Content-Type', 'Authorization'],
     });
 
     // Global prefix

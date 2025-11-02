@@ -16,7 +16,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
   async validate(payload: JwtPayload) {
     if (!payload.sub || !payload.email) {
-      throw new UnauthorizedException();
+      throw new UnauthorizedException('Token inválido: faltan campos requeridos');
     }
     return {
       id: payload.sub,
