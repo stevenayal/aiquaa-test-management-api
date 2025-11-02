@@ -338,7 +338,7 @@ async function main() {
       () =>
         prisma.defectLink.create({
           data: {
-            defectId: defect.id,
+            defectId: defect!.id,
             testCaseId: testCase2!.id,
           },
         }),
