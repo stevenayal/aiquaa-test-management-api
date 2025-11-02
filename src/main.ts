@@ -46,51 +46,8 @@ async function runMigrations(logger: Logger) {
 
         // Si db push falla, intentar con migraciones
         logger.warn(`⚠️  db push falló, intentando con migraciones...`);
-
-        try {
-          const { stdout, stderr } = await execAsync('npx prisma migrate deploy');
-          if (stdout) logger.log(stdout.trim());
-          if (stderr && !stderr.includes('No migration') && !stderr.includes('migration directory')) {
-            logger.warn(stderr.trim());
-          }
-          logger.log('✅ Migraciones aplicadas correctamente');
-          return;
-        } catch (migrateError: unknown) {
-          const error = migrateError as { message?: string; code?: number; stderr?: string };
-          const errorMsg = error.message || error.stderr || '';
-
-          // Si no hay migraciones o falla, intentamos db push (sincroniza el esquema)
-          if (
-            errorMsg.includes('No migration') ||
-            errorMsg.includes('migration directory') ||
-            error.code === 1
-          ) {
-            logger.log('📋 No hay migraciones disponibles. Sincronizando esquema...');
-            try {
-              const { stdout: pushStdout, stderr: pushStderr } = await execAsync(
-                'npx prisma db push --skip-generate',
-            );
-            if (pushStdout) logger.log(pushStdout.trim());
-            if (pushStderr) logger.log(pushStderr.trim());
-            logger.log('✅ Esquema de base de datos sincronizado');
-            return;
-          } catch (pushError: unknown) {
-            const pushErr = pushError as { message?: string; stderr?: string };
-            const pushErrorMsg = pushErr.message || pushErr.stderr || '';
-            // Si db push falla, puede ser porque las tablas ya existen o hay un error de conexión
-            if (
-              pushErrorMsg.includes('already exists') ||
-              pushErrorMsg.includes('P1009') ||
-              pushErrorMsg.includes('Database is up to date')
-            ) {
-              logger.log('ℹ️  Las tablas ya existen o el esquema está actualizado');
-              return;
-            }
-            logger.warn(`⚠️  db push falló: ${pushErrorMsg}`);
-            throw pushError;
-          }
-        }
-        throw migrateError;
+        logger.warn(`Error: ${errorMsg}`);
+        throw pushError;
       }
     })();
 
