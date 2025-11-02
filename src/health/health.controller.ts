@@ -1,6 +1,7 @@
 import { Controller, Get } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { PrismaService } from '../prisma/prisma.service';
+import { Public } from '../auth/decorators/public.decorator';
 
 @ApiTags('health')
 @Controller('health')
@@ -8,6 +9,7 @@ export class HealthController {
   constructor(private prisma: PrismaService) {}
 
   @Get()
+  @Public()
   @ApiOperation({ summary: 'Health check' })
   async check() {
     try {
@@ -28,6 +30,7 @@ export class HealthController {
   }
 
   @Get('metrics')
+  @Public()
   @ApiOperation({ summary: 'Métricas básicas (Prometheus compatible)' })
   async metrics() {
     const [users, projects, testCases, testRuns] = await Promise.all([
