@@ -1,9 +1,10 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 import { UsersService } from '../users/users.service';
-import { UserRole } from '@prisma/client';
+import { UserRole, OTPPurpose } from '@prisma/client';
+import { OTPService } from '../otp/otp.service';
 
 export interface JwtPayload {
   sub: string;
@@ -27,6 +28,7 @@ export class AuthService {
     private usersService: UsersService,
     private jwtService: JwtService,
     private configService: ConfigService,
+    private otpService: OTPService,
   ) {}
 
   async validateUser(email: string, password: string) {
@@ -70,9 +72,17 @@ export class AuthService {
       email,
       passwordHash: hashedPassword,
       role,
+      emailVerified: false,
     });
 
-    return this.login(user);
+    // Enviar OTP de verificación de email
+    await this.otpService.sendOTP(email, OTPPurpose.verify_email);
+
+    return {
+      message: 'Usuario registrado exitosamente. Verifica tu email con el código enviado.',
+      email: user.email,
+      emailVerified: false,
+    };
   }
 
   async refreshToken(refreshToken: string): Promise<{ accessToken: string }> {
@@ -89,5 +99,68 @@ export class AuthService {
     } catch (error) {
       throw new UnauthorizedException('Token de refresh inválido');
     }
+  }
+
+  async verifyEmail(email: string, code: string): Promise<AuthResponse> {
+    // Verificar OTP
+    await this.otpService.verifyOTP(email, code, OTPPurpose.verify_email);
+
+    // Marcar email como verificado
+    const user = await this.usersService.verifyEmail(email);
+
+    if (!user) {
+      throw new BadRequestException('Usuario no encontrado');
+    }
+
+    // Retornar tokens para login automático
+    return this.login(user);
+  }
+
+  async resendVerificationCode(email: string): Promise<{ message: string }> {
+    const user = await this.usersService.findByEmail(email);
+
+    if (!user) {
+      throw new BadRequestException('Usuario no encontrado');
+    }
+
+    if (user.emailVerified) {
+      throw new BadRequestException('El email ya está verificado');
+    }
+
+    await this.otpService.sendOTP(email, OTPPurpose.verify_email);
+
+    return {
+      message: 'Código de verificación reenviado',
+    };
+  }
+
+  async forgotPassword(email: string): Promise<{ message: string }> {
+    const user = await this.usersService.findByEmail(email);
+
+    if (!user) {
+      // Por seguridad, no revelar si el usuario existe o no
+      return {
+        message: 'Si el email existe, recibirás un código de recuperación',
+      };
+    }
+
+    await this.otpService.sendOTP(email, OTPPurpose.reset_password);
+
+    return {
+      message: 'Si el email existe, recibirás un código de recuperación',
+    };
+  }
+
+  async resetPassword(email: string, code: string, newPassword: string): Promise<{ message: string }> {
+    // Verificar OTP
+    await this.otpService.verifyOTP(email, code, OTPPurpose.reset_password);
+
+    // Actualizar contraseña
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await this.usersService.updatePassword(email, hashedPassword);
+
+    return {
+      message: 'Contraseña actualizada exitosamente',
+    };
   }
 }

@@ -30,9 +30,23 @@ export class UsersService {
     return user;
   }
 
-  async create(data: { email: string; passwordHash: string; role: UserRole }) {
+  async create(data: { email: string; passwordHash: string; role: UserRole; emailVerified?: boolean }) {
     return this.prisma.user.create({
       data,
+    });
+  }
+
+  async verifyEmail(email: string) {
+    return this.prisma.user.update({
+      where: { email },
+      data: { emailVerified: true },
+    });
+  }
+
+  async updatePassword(email: string, passwordHash: string) {
+    return this.prisma.user.update({
+      where: { email },
+      data: { passwordHash },
     });
   }
 
@@ -42,6 +56,7 @@ export class UsersService {
         id: true,
         email: true,
         role: true,
+        emailVerified: true,
         createdAt: true,
       },
     });

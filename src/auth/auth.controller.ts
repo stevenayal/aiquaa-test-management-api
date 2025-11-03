@@ -1,7 +1,15 @@
 import { Controller, Post, Body, HttpCode, HttpStatus, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
-import { RegisterDto, LoginDto, RefreshTokenDto } from './dto';
+import {
+  RegisterDto,
+  LoginDto,
+  RefreshTokenDto,
+  VerifyEmailDto,
+  ResendVerificationDto,
+  ForgotPasswordDto,
+  ResetPasswordDto,
+} from './dto';
 import { UserRole } from '@prisma/client';
 import { Public } from './decorators/public.decorator';
 
@@ -66,5 +74,75 @@ export class AuthController {
   @ApiResponse({ status: 401, description: 'Token inválido' })
   async refresh(@Body() refreshDto: RefreshTokenDto) {
     return this.authService.refreshToken(refreshDto.refreshToken);
+  }
+
+  @Post('verify-email')
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Verificar email con código OTP' })
+  @ApiBody({
+    schema: {
+      example: {
+        email: 'user@example.com',
+        code: '123456',
+      },
+    },
+  })
+  @ApiResponse({ status: 200, description: 'Email verificado exitosamente. Retorna tokens de acceso.' })
+  @ApiResponse({ status: 400, description: 'Código OTP inválido o expirado' })
+  async verifyEmail(@Body() verifyEmailDto: VerifyEmailDto) {
+    return this.authService.verifyEmail(verifyEmailDto.email, verifyEmailDto.code);
+  }
+
+  @Post('resend-verification')
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Reenviar código de verificación de email' })
+  @ApiBody({
+    schema: {
+      example: {
+        email: 'user@example.com',
+      },
+    },
+  })
+  @ApiResponse({ status: 200, description: 'Código reenviado exitosamente' })
+  @ApiResponse({ status: 400, description: 'Email ya verificado o usuario no encontrado' })
+  async resendVerification(@Body() resendDto: ResendVerificationDto) {
+    return this.authService.resendVerificationCode(resendDto.email);
+  }
+
+  @Post('forgot-password')
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Solicitar código para recuperación de contraseña' })
+  @ApiBody({
+    schema: {
+      example: {
+        email: 'user@example.com',
+      },
+    },
+  })
+  @ApiResponse({ status: 200, description: 'Código de recuperación enviado (si el email existe)' })
+  async forgotPassword(@Body() forgotDto: ForgotPasswordDto) {
+    return this.authService.forgotPassword(forgotDto.email);
+  }
+
+  @Post('reset-password')
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Restablecer contraseña con código OTP' })
+  @ApiBody({
+    schema: {
+      example: {
+        email: 'user@example.com',
+        code: '123456',
+        newPassword: 'NewPassword123!',
+      },
+    },
+  })
+  @ApiResponse({ status: 200, description: 'Contraseña restablecida exitosamente' })
+  @ApiResponse({ status: 400, description: 'Código OTP inválido o expirado' })
+  async resetPassword(@Body() resetDto: ResetPasswordDto) {
+    return this.authService.resetPassword(resetDto.email, resetDto.code, resetDto.newPassword);
   }
 }
