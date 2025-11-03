@@ -5,7 +5,7 @@ import { Resend } from 'resend';
 @Injectable()
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
-  private resend: Resend;
+  private resend: Resend | null;
   private fromEmail: string;
 
   constructor(private configService: ConfigService) {
